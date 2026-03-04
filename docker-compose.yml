@@ -1,0 +1,43 @@
+services:
+
+  # ── Backend (FastAPI) ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskmanager_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000" # Also expose directly for API docs at localhost:8000/docs
+    environment:
+      - SECRET_KEY=your-super-secret-key-change-in-production
+      - ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=10080
+      - DATABASE_URL=sqlite:///./taskmanager.db
+      - UPLOAD_DIR=uploads
+      - MAX_FILE_SIZE=10485760
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:8000,http://localhost:5173
+    volumes:
+      - backend_uploads:/app/uploads # Persist uploaded files
+      - backend_db:/app # Persist SQLite database
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ── Frontend (Vite + nginx) ───────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: taskmanager_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80" # App available at http://localhost
+    depends_on:
+      - backend
+
+volumes:
+  backend_uploads:
+  backend_db:
